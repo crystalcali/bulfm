@@ -6,7 +6,9 @@
 
 ## Быстрый запуск на Spark
 
-Используйте Python 3.12 с **уже работающим NVIDIA CUDA PyTorch 2.14.1–2.15.x**, поддерживающим GB10. Установщик проверяет bf16 matmul и сохраняет этот torch. На ARM нельзя без проверки ставить обычный CPU wheel PyTorch. Нужны `git`, `curl` или `wget`, доступ к GitHub, PyPI и Hugging Face. Установщик сам найдёт `uv` в PATH, `~/.local/bin` или `~/.cargo/bin`; при отсутствии установит его в `.tools/uv` без sudo и изменения профиля оболочки.
+На Spark нужны работающий NVIDIA-драйвер (`nvidia-smi`), `git`, `curl` или `wget` и доступ к GitHub, PyPI, download.pytorch.org и Hugging Face. Предварительно ставить Python 3.12 и PyTorch не требуется: установщик найдёт подходящий Python/CUDA torch среди существующих окружений или создаст отдельную `.venv` с Python 3.12 и официальным ARM64 CUDA PyTorch `2.14.1+cu130`. После установки выполняется настоящий bf16 matmul на GPU. Системный Python и чужие окружения не изменяются.
+
+`uv` ищется в PATH, `~/.local/bin` и `~/.cargo/bin`; при отсутствии устанавливается в `.tools/uv` без sudo и изменения профиля оболочки. Уже работающий PyTorch 2.14.1–2.15.x сохраняется, если он доступен внутри `.venv`. Пакеты другого virtualenv автоматически не наследуются: в таком случае CUDA torch устанавливается отдельно в окружение BULFM. Некорректная старая `.venv` сохраняется как `.venv.backup-*`.
 
 ```bash
 git clone https://github.com/crystalcali/bulfm.git
@@ -32,7 +34,7 @@ bash scripts/setup_spark.sh
 /train configs/spark.yaml
 ```
 
-`setup_spark.sh` создаёт `.venv` с доступом к пакетам выбранного Python, устанавливает приложение, Chromium и фиксированную версию страниц MiniWoB. Если Playwright сообщает об отсутствующих системных библиотеках, установите их администратором: `.venv/bin/python -m playwright install-deps chromium`. Скрипт сам не выполняет `sudo` и не останавливает ваши сервисы. Перед обучением освободите память от ненужных inference-серверов самостоятельно.
+`setup_spark.sh` устанавливает приложение, Chromium и фиксированную версию страниц MiniWoB. Первичная загрузка CUDA PyTorch и его библиотек может занимать несколько гигабайт и заметное время. `BULFM_PYTHON` — необязательный явный выбор уже работающего Python 3.12 с CUDA torch; без него действует автоматический поиск/создание окружения. Если Playwright сообщает об отсутствующих системных библиотеках, установите их администратором: `.venv/bin/python -m playwright install-deps chromium`. Скрипт сам не выполняет `sudo` и не останавливает ваши сервисы. Перед обучением освободите память от ненужных inference-серверов самостоятельно.
 
 Если GitHub на Spark недоступен, склонируйте проект и MiniWoB на другой машине и перенесите каталоги. Можно указать `MINIWOB_URL=file:///absolute/path/miniwob-plusplus/miniwob/html/miniwob/` или HTTP URL страниц. Обычного Hugging Face токена для публичной модели не требуется; ключи не зашиты в код.
 

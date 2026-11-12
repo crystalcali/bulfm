@@ -2,29 +2,49 @@
 # Preserve the CUDA-enabled PyTorch already installed on DGX Spark.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PYTHON_BIN="${BULFM_PYTHON:-python3.12}"
-if ! command -v "$PYTHON_BIN" >/dev/null; then
-  PYTHON_BIN=python3
-fi
 if [[ "${1:-}" != '--browser-only' ]]; then
   source scripts/ensure_uv.sh
   ensure_uv "$PWD/.tools/uv" "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv"
-  "$PYTHON_BIN" - <<'PY'
-import sys
-try:
-    import torch
-except ImportError:
-    raise SystemExit('Use the Python environment with NVIDIA CUDA PyTorch. Set BULFM_PYTHON=/path/to/python')
-if sys.version_info[:2] != (3, 12):
-    raise SystemExit('Python 3.12 is required. Set BULFM_PYTHON=/path/to/python')
-if not torch.cuda.is_available():
-    raise SystemExit('CUDA PyTorch is required; this installer will not replace it with a CPU wheel.')
-a = torch.randn(32, 32, device='cuda', dtype=torch.bfloat16)
-(a @ a).sum().item()
-print('CUDA works:', torch.__version__, torch.cuda.get_device_name())
-PY
-  if [[ ! -x .venv/bin/python ]]; then
+  if [[ -n "${BULFM_PYTHON:-}" ]]; then
+    PYTHON_BIN=$(command -v "$BULFM_PYTHON") || {
+      echo "BULFM_PYTHON not found: $BULFM_PYTHON" >&2; exit 1;
+    }
+    "$PYTHON_BIN" scripts/check_cuda.py
+  else
+    DISCOVERY_PYTHON=$(command -v python3 || command -v python || true)
+    PYTHON_BIN=''
+    if [[ -n "$DISCOVERY_PYTHON" ]]; then
+      PYTHON_BIN=$("$DISCOVERY_PYTHON" scripts/find_cuda_python.py) || PYTHON_BIN=''
+    fi
+  fi
+  if [[ -z "$PYTHON_BIN" ]]; then
+    command -v nvidia-smi >/dev/null || {
+      echo 'NVIDIA driver not found (nvidia-smi). Run this installer on your Spark.' >&2; exit 1;
+    }
+    nvidia-smi --query-gpu=name --format=csv,noheader
+    echo 'No compatible CUDA Python found. Creating an isolated Python 3.12 environment.'
+    if [[ -e .venv ]]; then
+      VENV_BACKUP=".venv.backup-$(date +%Y%m%d-%H%M%S)-$$"
+      mv .venv "$VENV_BACKUP"
+      echo "Previous environment preserved at $VENV_BACKUP"
+    fi
+    "$BULFM_UV" venv --python 3.12 .venv
+    PYTHON_BIN="$PWD/.venv/bin/python"
+  elif [[ "$PYTHON_BIN" != "$PWD/.venv/bin/python" ]]; then
+    # A stale CPU-only/incompatible project venv must not hide the selected working torch.
+    if [[ -e .venv ]]; then
+      VENV_BACKUP=".venv.backup-$(date +%Y%m%d-%H%M%S)-$$"
+      mv .venv "$VENV_BACKUP"
+      echo "Previous environment preserved at $VENV_BACKUP"
+    fi
     "$BULFM_UV" venv --python "$PYTHON_BIN" --system-site-packages .venv
+  fi
+  if ! .venv/bin/python scripts/check_cuda.py; then
+    # External venv packages are not inherited by a new venv. Install only into our own environment.
+    echo 'Installing CUDA PyTorch into BULFM .venv (system Python is unchanged).'
+    "$BULFM_UV" pip install --python .venv/bin/python 'torch==2.14.1+cu130' \
+      --index-url https://download.pytorch.org/whl/cu130
+    .venv/bin/python scripts/check_cuda.py
   fi
   # A constraint prevents uv from replacing the NVIDIA torch build with another wheel.
   TORCH_CONSTRAINT=$(mktemp)
