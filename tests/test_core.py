@@ -249,3 +249,22 @@ def test_import_error_reports_original_dependency_failure():
 def test_error_without_chain_stays_short():
     from bulfm.diagnostics import error_message
     assert error_message(ValueError("bad config")) == "ValueError: bad config"
+
+
+def test_prompt_ids_with_transformers_default_batch_encoding():
+    from tokenizers import Tokenizer as BackendTokenizer
+    from tokenizers.models import WordLevel
+    from tokenizers.pre_tokenizers import Whitespace
+    from transformers import PreTrainedTokenizerFast
+    backend = BackendTokenizer(WordLevel({"[UNK]": 0, "user": 1, "assistant": 2}, unk_token="[UNK]"))
+    backend.pre_tokenizer = Whitespace()
+    tok = PreTrainedTokenizerFast(tokenizer_object=backend, unk_token="[UNK]")
+    tok.chat_template = ("{% for message in messages %}{{ message.role }} {{ message.content }} "
+                         "{% endfor %}{% if add_generation_prompt %}assistant{% endif %}")
+    messages = [{"role": "user", "content": "Click the button"}]
+    default = tok.apply_chat_template(messages, tokenize=True)
+    assert "input_ids" in default  # Transformers 5 returns BatchEncoding by default.
+    ids = prompt_ids(tok, Config(), {"goal": "Click", "tree": "[13] button", "error": ""}, [])
+    assert isinstance(ids, list) and all(type(i) is int for i in ids)
+    tensor = torch.tensor([ids], dtype=torch.long)
+    assert tensor.ndim == 2 and tensor.shape[1] == len(ids)

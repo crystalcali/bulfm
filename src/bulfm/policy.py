@@ -60,7 +60,9 @@ def prompt_ids(tok, c, obs, history):
             f"Goal: {obs['goal']}\nPrevious actions: {past}\n"
             f"Last error: {obs['error']}\nCurrent page:\n{tree}\nNext action:"}]
         ids = tok.apply_chat_template(messages, tokenize=True, add_generation_prompt=True,
-                                      enable_thinking=False)
+                                      enable_thinking=False, return_dict=False)
+        if not isinstance(ids, list) or not ids or not all(type(i) is int for i in ids):
+            raise TypeError("Chat template must return a non-empty list of integer token IDs")
         if len(ids) <= budget:
             return ids
         if past:
@@ -75,7 +77,7 @@ def prompt_ids(tok, c, obs, history):
 @torch.no_grad()
 def generate(model, tok, ids, c, sample=True):
     model.eval()
-    inputs = torch.tensor([ids], device=next(model.parameters()).device)
+    inputs = torch.tensor([ids], dtype=torch.long, device=next(model.parameters()).device)
     kwargs = {"do_sample": sample}
     if sample:
         kwargs.update(temperature=1.0, top_p=1.0, top_k=0)
