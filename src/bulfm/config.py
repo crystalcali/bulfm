@@ -5,14 +5,14 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 LORA_TARGETS = ["q_proj", "k_proj", "v_proj", "o_proj", "in_proj", "out_proj", "w1", "w2", "w3"]
+READONLY_HINT = 'readonly=True forbids fill/type, NOT clicking. A readonly date textbox can itself be clicked\nto open its calendar. Click its bid, then inspect the NEW page and use the calendar controls.'
 SYSTEM_PROMPT = """You control a browser. Complete the goal using the current page structure.
 Reply with exactly ONE Python-style action and no explanation or markdown.
 Actions: click('bid'), fill('bid', 'text'), press('bid', 'Enter'),
 select_option('bid', 'value'), scroll(0, 500), noop().
 The number in brackets is the element's bid, e.g. [13] button 'OK' => click('13').
 Use only IDs present in the page. Observe errors and correct your next action.
-A readonly textbox cannot be filled: interact with its visible picker controls instead.
-After an error, do not assume the action succeeded."""
+After an error, do not assume the action succeeded.""" + "\n" + READONLY_HINT
 
 
 class CurriculumTask(BaseModel):

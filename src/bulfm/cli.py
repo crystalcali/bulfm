@@ -23,6 +23,8 @@ HELP = """/train [configs/spark.yaml]   Start a detached GRPO run
 /config [FILE]               Show validated configuration
 /eval RUN_ID                 Evaluate saved LoRA on fixed held-out seeds
 /dashboard [PORT]            Start dashboard (default port: 7861)
+/calendar-check RUN_ID [N]   Compare original/repaired prompt on saved adapter (foreground)
+/calendar-fix RUN_ID         Update stopped run prompt; preserve checkpoint
 /benchmark [CONFIG]          Compare 1/4/8 environments (foreground)
 /doctor                      Check CUDA and browser dependencies
 /env-check                   Verify a real click and reward without loading LFM3
@@ -116,7 +118,7 @@ def env_check():
 def execute(words, root):
     command, *args = words
     command = command.lstrip("/")
-    if command in {"stop", "resume", "logs", "eval"} and len(args) != 1:
+    if command in {"stop", "resume", "logs", "eval", "calendar-fix"} and len(args) != 1:
         raise ValueError(f"Usage: /{command} RUN_ID. Use /status to list runs.")
     if command == "train":
         run = start(root, args[0] if args else "configs/spark.yaml")
@@ -142,6 +144,14 @@ def execute(words, root):
             raise ValueError("Manual evaluation command currently accepts LoRA runs only")
         run = start(root, source / "config.yaml", adapter=latest(source))
         console.print(f"Evaluation started: {run.name}")
+    elif command == "calendar-check":
+        if len(args) not in {1, 2}:
+            raise ValueError("Usage: /calendar-check RUN_ID [EPISODES]")
+        from .calendar_check import run_check
+        run_check(root, args[0], int(args[1]) if len(args) == 2 else 2)
+    elif command == "calendar-fix":
+        from .calendar_check import apply_fix
+        apply_fix(root, args[0])
     elif command == "benchmark":
         from .benchmark import run_benchmark
         run_benchmark(args[0] if args else "configs/spark-book-flight-parallel.yaml", root)
@@ -171,7 +181,7 @@ def shell(root):
     session = PromptSession(history=FileHistory(str(Path(root) / ".history")),
                             completer=WordCompleter(["/" + x for x in
                                 ["train", "resume", "stop", "status", "logs", "config", "eval",
-                                 "dashboard", "benchmark", "doctor", "env-check", "help", "exit"]]))
+                                 "dashboard", "benchmark", "calendar-check", "calendar-fix", "doctor", "env-check", "help", "exit"]]))
     console.print(Panel("[bold cyan]BULFM[/bold cyan] · LFM3 Browser RL\n"
                         "GRPO • DGX Spark • /help\nTraining continues when this terminal closes.",
                         border_style="cyan"))
