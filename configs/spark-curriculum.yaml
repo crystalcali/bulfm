@@ -1,0 +1,43 @@
+# One shared LoRA policy, one task/seed per GRPO group.
+model: LiquidAI/LFM3-1.7B
+steps: 300
+group_size: 8
+groups_per_step: 1
+num_envs: 8
+generation_batch_size: 4
+generation_use_cache: true
+context_tokens: 8192
+completion_tokens: 1024
+save_every: 1
+baseline_eval: false
+eval_every: 25
+curriculum:
+  replay_fraction: 0.3
+  window_episodes: 32
+  min_episodes: 16
+  promote_success: 0.6
+  promote_valid: 0.8
+  eval_episodes_per_task: 2
+  stages:
+    - name: clicks
+      tasks:
+        - task: miniwob.click-test
+          episode_steps: 3
+        - task: miniwob.click-button
+          episode_steps: 4
+    - name: input
+      tasks:
+        - task: miniwob.enter-text
+          episode_steps: 5
+    - name: calendar-easy
+      tasks:
+        - task: miniwob.choose-date-easy
+          episode_steps: 8
+    - name: calendar
+      tasks:
+        - task: miniwob.choose-date
+          episode_steps: 16
+    - name: flight
+      tasks:
+        - task: miniwob.book-flight
+          episode_steps: 20

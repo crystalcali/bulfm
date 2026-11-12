@@ -133,10 +133,12 @@ class Browser:
 
     @staticmethod
     def flatten(obs):
-        from browsergym.utils.obs import flatten_axtree_to_str
+        from browsergym.utils.obs import IGNORED_AXTREE_PROPERTIES, flatten_axtree_to_str
         return {
             "goal": obs.get("goal", "Complete the task."),
-            "tree": flatten_axtree_to_str(obs["axtree_object"]),
+            "tree": flatten_axtree_to_str(
+                obs["axtree_object"],
+                ignored_properties=[p for p in IGNORED_AXTREE_PROPERTIES if p not in {"readonly", "editable"}]),
             "error": obs.get("last_action_error", ""),
         }
 

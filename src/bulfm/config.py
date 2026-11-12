@@ -10,7 +10,41 @@ Reply with exactly ONE Python-style action and no explanation or markdown.
 Actions: click('bid'), fill('bid', 'text'), press('bid', 'Enter'),
 select_option('bid', 'value'), scroll(0, 500), noop().
 The number in brackets is the element's bid, e.g. [13] button 'OK' => click('13').
-Use only IDs present in the page. Observe errors and correct your next action."""
+Use only IDs present in the page. Observe errors and correct your next action.
+A readonly textbox cannot be filled: interact with its visible picker controls instead.
+After an error, do not assume the action succeeded."""
+
+
+class CurriculumTask(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task: str = Field(pattern=r"^miniwob\.[a-z0-9-]+$")
+    episode_steps: int = Field(default=8, ge=1, le=100)
+
+
+class CurriculumStage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    tasks: list[CurriculumTask] = Field(min_length=1)
+
+
+class CurriculumConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    stages: list[CurriculumStage] = Field(min_length=1)
+    replay_fraction: float = Field(default=0.3, ge=0, lt=1)
+    window_episodes: int = Field(default=32, ge=2)
+    min_episodes: int = Field(default=16, ge=2)
+    promote_success: float = Field(default=0.6, gt=0, le=1)
+    promote_valid: float = Field(default=0.8, ge=0, le=1)
+    eval_episodes_per_task: int = Field(default=2, ge=1)
+
+    @model_validator(mode="after")
+    def consistent(self):
+        names = [t.task for stage in self.stages for t in stage.tasks]
+        if len(names) != len(set(names)):
+            raise ValueError("Curriculum task names must be unique")
+        if self.min_episodes > self.window_episodes:
+            raise ValueError("min_episodes must not exceed window_episodes")
+        return self
 
 
 class Config(BaseModel):
@@ -19,6 +53,7 @@ class Config(BaseModel):
     model_revision: str = "main"
     trust_remote_code: bool = True
     task: str = "miniwob.click-test"
+    curriculum: CurriculumConfig | None = None
     seed: int = Field(default=23, ge=0, le=1_000_000_000)
     eval_seed: int = Field(default=1_000_000_001, ge=1_000_000_001, le=2_000_000_000)
     steps: int = Field(default=100, ge=1, le=100_000)
