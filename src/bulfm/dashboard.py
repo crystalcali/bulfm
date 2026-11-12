@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
+from . import __version__
 from .manager import list_runs
 from .storage import safe_run, snapshot
 
@@ -11,6 +12,10 @@ from .storage import safe_run, snapshot
 def create_app(root="runs"):
     root = Path(root).resolve()
     app = FastAPI(title="BULFM training dashboard")
+
+    @app.get("/health")
+    def health():
+        return {"app": "bulfm", "version": __version__, "runs_dir": str(root)}
 
     @app.get("/", response_class=HTMLResponse)
     def index():

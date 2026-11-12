@@ -2,8 +2,6 @@ import argparse
 import importlib.util
 import json
 import shlex
-import subprocess
-import sys
 from pathlib import Path
 
 from rich.console import Console
@@ -12,6 +10,7 @@ from rich.table import Table
 
 from . import __version__
 from .config import Config
+from .dashboard_process import DEFAULT_PORT, start_dashboard
 from .manager import list_runs, start, stop
 from .storage import safe_run, snapshot
 
@@ -23,7 +22,7 @@ HELP = """/train [configs/spark.yaml]   Start a detached GRPO run
 /logs RUN_ID                 Last 50 worker log lines
 /config [FILE]               Show validated configuration
 /eval RUN_ID                 Evaluate saved LoRA on fixed held-out seeds
-/dashboard                   Start dashboard at http://127.0.0.1:7860
+/dashboard [PORT]            Start dashboard (default port: 7861)
 /doctor                      Check CUDA and browser dependencies
 /env-check                   Verify a real click and reward without loading LFM3
 /help                        Show commands
@@ -143,14 +142,8 @@ def execute(words, root):
     elif command == "env-check":
         env_check()
     elif command == "dashboard":
-        # Separate process: neither training nor the shell's input is blocked by the web server.
-        log_path = Path(root).resolve() / "dashboard.log"
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with log_path.open("ab") as log:
-            subprocess.Popen([sys.executable, "-m", "bulfm.cli", "--runs", str(Path(root).resolve()),
-                              "dashboard"], stdout=log, stderr=log,
-                             stdin=subprocess.DEVNULL, start_new_session=True)
-        console.print("Dashboard: http://127.0.0.1:7860 · log: " + str(log_path))
+        url = start_dashboard(root, int(args[0]) if args else None)
+        console.print(f"Dashboard ready: {url}")
     elif command == "help":
         console.print(HELP, markup=False)
     elif command in {"exit", "quit"}:
@@ -200,7 +193,7 @@ def main():
     parser.add_argument("command", nargs="?", default="chat")
     parser.add_argument("args", nargs="*")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=7860)
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     opts = parser.parse_args()
     if opts.command == "chat":
         shell(opts.runs)
