@@ -42,7 +42,8 @@ def collect(model, tok, env, c, seed, trace=None, sample=True, heartbeat=None, s
         episode.reward += reward
         episode.success |= reward > 0
         episode.invalid_actions += not valid
-        history.append(action)
+        history.append({"before": obs, "after": next_obs, "response": text,
+                        "action": action, "valid": valid, "reward": reward})
         if trace:
             trace({"seed": seed, "turn": turn, "goal": obs["goal"], "page": obs["tree"],
                    "response": text, "action": action, "valid": valid, "reward": reward,
@@ -110,7 +111,8 @@ def collect_many(model, tok, pool, c, seeds, trace=None, sample=True, heartbeat=
                        "page": current["obs"]["tree"], "response": text, "action": action,
                        "valid": valid, "reward": reward, "done": done, "error": obs["error"]})
             current["turn"] += 1
-            current["history"].append(action)
+            current["history"].append({"before": current["obs"], "after": obs, "response": text,
+                                       "action": action, "valid": valid, "reward": reward})
             current["obs"] = obs
             if heartbeat:
                 heartbeat(turn=current["turn"], action=action, valid_action=valid,

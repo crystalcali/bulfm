@@ -13,7 +13,7 @@ jobs:
       - run: python -c "import OpenSSL; import cryptography; from bulfm.diagnostics import training_imports; training_imports()"
       - run: python -m pytest -q
       - run: ruff check .
-      - run: BULFM_LFM3_TEST=1 python -m pytest -q tests/test_lfm3_batch.py
+      - run: BULFM_LFM3_TEST=1 python -m pytest -q tests/test_lfm3_batch.py tests/test_tools_protocol.py
       - uses: actions/checkout@v4
         with:
           repository: Farama-Foundation/miniwob-plusplus

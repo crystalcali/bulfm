@@ -134,10 +134,19 @@ class Browser:
     @staticmethod
     def flatten(obs):
         from browsergym.utils.obs import IGNORED_AXTREE_PROPERTIES, flatten_axtree_to_str
+        # AX can call readonly inputs editable='plaintext'; avoid that misleading combination.
+        tree = {**obs["axtree_object"], "nodes": []}
+        for node in obs["axtree_object"]["nodes"]:
+            props = node.get("properties", [])
+            readonly = any(p["name"] == "readonly" and p.get("value", {}).get("value") is True for p in props)
+            props = [p for p in props if not (
+                (p["name"] == "readonly" and p.get("value", {}).get("value") is False)
+                or (p["name"] == "editable" and readonly))]
+            tree["nodes"].append({**node, "properties": props})
         return {
             "goal": obs.get("goal", "Complete the task."),
             "tree": flatten_axtree_to_str(
-                obs["axtree_object"],
+                tree,
                 ignored_properties=[p for p in IGNORED_AXTREE_PROPERTIES if p not in {"readonly", "editable"}]),
             "error": obs.get("last_action_error", ""),
         }

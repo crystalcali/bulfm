@@ -83,6 +83,7 @@ class Config(BaseModel):
     eval_episodes: int = Field(default=20, ge=1)
     eval_every: int = Field(default=25, ge=0)
     baseline_eval: bool = True
+    native_tools: bool = False
     system_prompt: str = SYSTEM_PROMPT
     miniwob_url: str | None = None
     headless: bool = True

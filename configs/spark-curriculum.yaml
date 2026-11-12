@@ -1,5 +1,6 @@
 # One shared LoRA policy, one task/seed per GRPO group.
 model: LiquidAI/LFM3-1.7B
+native_tools: true
 steps: 300
 group_size: 8
 groups_per_step: 1

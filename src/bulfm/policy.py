@@ -52,9 +52,12 @@ def load_policy(c: Config, adapter=None):
 
 
 def prompt_ids(tok, c, obs, history):
+    if c.native_tools:
+        from .tools_protocol import native_prompt_ids
+        return native_prompt_ids(tok, c, obs, history)
     # Shrink only observation/history, never left-truncate away the system instructions or goal.
     budget = c.context_tokens - c.completion_tokens
-    tree, past = obs["tree"], "\n".join(history[-10:])
+    tree, past = obs["tree"], "\n".join(h["action"] if isinstance(h, dict) else h for h in history[-10:])
     for _ in range(40):
         messages = [{"role": "system", "content": c.system_prompt}, {"role": "user", "content":
             f"Goal: {obs['goal']}\nPrevious actions: {past}\n"
