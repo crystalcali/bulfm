@@ -9,8 +9,8 @@ ALLOWED = {"click": (1, 1), "fill": (2, 2), "press": (2, 2),
            "select_option": (2, 2), "scroll": (2, 2), "noop": (0, 0)}
 
 
-def parse_action(text: str) -> tuple[str, bool]:
-    # Parse the entire response. Never eval/exec arbitrary model output.
+def _parse_action_text(text: str) -> tuple[str, bool]:
+    # Validate exactly one complete action. Never eval/exec arbitrary model output.
     text = text.strip()
     if text.startswith("```") and text.endswith("```"):
         text = "\n".join(text.splitlines()[1:-1]).strip()
@@ -31,6 +31,17 @@ def parse_action(text: str) -> tuple[str, bool]:
         return f"{name}({', '.join(repr(x) for x in args)})", True
     except (SyntaxError, ValueError, KeyError, TypeError, RecursionError):
         return "noop()", False
+
+
+def parse_action(text: str) -> tuple[str, bool]:
+    action, valid = _parse_action_text(text)
+    if valid:
+        return action, True
+    # LFM3 can emit a partial reasoning prefix even with enable_thinking=False.
+    # Only the complete final segment is executable; reasoning is never scanned for actions.
+    if "</think>" in text:
+        return _parse_action_text(text.split("</think>", 1)[1])
+    return action, False
 
 
 class Browser:
