@@ -6,8 +6,9 @@ PYTHON_BIN="${BULFM_PYTHON:-python3.12}"
 if ! command -v "$PYTHON_BIN" >/dev/null; then
   PYTHON_BIN=python3
 fi
-command -v uv >/dev/null || { echo 'Install uv: https://docs.astral.sh/uv/getting-started/installation/'; exit 1; }
 if [[ "${1:-}" != '--browser-only' ]]; then
+  source scripts/ensure_uv.sh
+  ensure_uv "$PWD/.tools/uv" "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv"
   "$PYTHON_BIN" - <<'PY'
 import sys
 try:
@@ -23,13 +24,13 @@ a = torch.randn(32, 32, device='cuda', dtype=torch.bfloat16)
 print('CUDA works:', torch.__version__, torch.cuda.get_device_name())
 PY
   if [[ ! -x .venv/bin/python ]]; then
-    uv venv --python "$PYTHON_BIN" --system-site-packages .venv
+    "$BULFM_UV" venv --python "$PYTHON_BIN" --system-site-packages .venv
   fi
   # A constraint prevents uv from replacing the NVIDIA torch build with another wheel.
   TORCH_CONSTRAINT=$(mktemp)
   trap 'rm -f "$TORCH_CONSTRAINT"' EXIT
   .venv/bin/python -c 'import torch; print("torch==" + torch.__version__)' > "$TORCH_CONSTRAINT"
-  uv pip install --python .venv/bin/python -c "$TORCH_CONSTRAINT" -e '.[train]'
+  "$BULFM_UV" pip install --python .venv/bin/python -c "$TORCH_CONSTRAINT" -e '.[train]'
 fi
 [[ -x .venv/bin/python ]] || { echo 'Create the environment first'; exit 1; }
 .venv/bin/python -m playwright install chromium

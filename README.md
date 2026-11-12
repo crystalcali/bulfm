@@ -6,7 +6,7 @@
 
 ## Быстрый запуск на Spark
 
-Используйте Python 3.12 с **уже работающим NVIDIA CUDA PyTorch 2.14.1–2.15.x**, поддерживающим GB10. Установщик проверяет bf16 matmul и сохраняет этот torch. На ARM нельзя без проверки ставить обычный CPU wheel PyTorch. Нужны `git`, `uv`, доступ к GitHub, PyPI и Hugging Face.
+Используйте Python 3.12 с **уже работающим NVIDIA CUDA PyTorch 2.14.1–2.15.x**, поддерживающим GB10. Установщик проверяет bf16 matmul и сохраняет этот torch. На ARM нельзя без проверки ставить обычный CPU wheel PyTorch. Нужны `git`, `curl` или `wget`, доступ к GitHub, PyPI и Hugging Face. Установщик сам найдёт `uv` в PATH, `~/.local/bin` или `~/.cargo/bin`; при отсутствии установит его в `.tools/uv` без sudo и изменения профиля оболочки.
 
 ```bash
 git clone https://github.com/crystalcali/bulfm.git
