@@ -25,3 +25,26 @@ def surrogate(logps, old_logps, advantage, epsilon, reference=None, beta=0.0):
         kl = torch.exp(delta) - delta - 1
         obj = obj - beta * kl
     return -obj
+
+
+def batch_token_logps(model, prompts, completions, pad_token_id):
+    """Score unpadded trajectories together; prompt/padding tokens never enter the loss."""
+    if not prompts or len(prompts) != len(completions):
+        raise ValueError("Expected matching non-empty prompt/completion batches")
+    device = next(model.parameters()).device
+    lengths = [len(p) + len(c) for p, c in zip(prompts, completions)]
+    ids = torch.full((len(prompts), max(lengths)), pad_token_id, dtype=torch.long, device=device)
+    mask = torch.zeros_like(ids)
+    for row, (prompt, completion) in enumerate(zip(prompts, completions)):
+        if not prompt or not completion:
+            raise ValueError("Empty prompt/completion in scoring batch")
+        ids[row, :lengths[row]] = torch.tensor(prompt + completion, device=device)
+        mask[row, :lengths[row]] = 1
+    logits = model(input_ids=ids, attention_mask=mask, use_cache=False).logits
+    result = []
+    for row, (prompt, completion) in enumerate(zip(prompts, completions)):
+        start = len(prompt) - 1
+        action_logits = logits[row, start:start + len(completion)].float()
+        labels = ids[row, len(prompt):lengths[row]]
+        result.append(action_logits.log_softmax(-1).gather(-1, labels[:, None]).squeeze(-1))
+    return result

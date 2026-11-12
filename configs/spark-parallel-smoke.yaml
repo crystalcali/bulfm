@@ -1,0 +1,14 @@
+model: LiquidAI/LFM3-1.7B
+task: miniwob.click-test
+steps: 2
+group_size: 4
+num_envs: 4
+generation_batch_size: 4
+generation_use_cache: true
+episode_steps: 2
+context_tokens: 1024
+completion_tokens: 32
+warmup_steps: 0
+save_every: 1
+eval_episodes: 4
+eval_every: 0

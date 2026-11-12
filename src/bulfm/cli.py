@@ -23,6 +23,7 @@ HELP = """/train [configs/spark.yaml]   Start a detached GRPO run
 /config [FILE]               Show validated configuration
 /eval RUN_ID                 Evaluate saved LoRA on fixed held-out seeds
 /dashboard [PORT]            Start dashboard (default port: 7861)
+/benchmark [CONFIG]          Compare 1/4/8 environments (foreground)
 /doctor                      Check CUDA and browser dependencies
 /env-check                   Verify a real click and reward without loading LFM3
 /help                        Show commands
@@ -32,7 +33,7 @@ HELP = """/train [configs/spark.yaml]   Start a detached GRPO run
 def status(root, run_id=None):
     rows = [snapshot(safe_run(Path(root), run_id))] if run_id else list_runs(root)
     table = Table(title="BULFM runs", expand=True)
-    for label in ("Run", "State / phase", "Step", "Reward", "Success", "tok/s"):
+    for label in ("Run", "State / phase", "Step", "Reward", "Success", "tok/s", "Progress"):
         table.add_column(label)
     for row in rows[:20]:
         m = row.get("latest_metrics", {})
@@ -40,7 +41,10 @@ def status(root, run_id=None):
                       f"{row.get('step', 0)}/{row.get('total_steps', '?')}",
                       f"{m['reward']:.3f}" if "reward" in m else "—",
                       f"{m['success_rate']:.0%}" if "success_rate" in m else "—",
-                      f"{m['tokens_per_second']:.1f}" if "tokens_per_second" in m else "—")
+                      f"{m['tokens_per_second']:.1f}" if "tokens_per_second" in m else "—",
+                      f"eval {row.get('eval_completed', 0)}/{row.get('eval_total', '?')}"
+                      if row.get("status") == "evaluating" else
+                      f"envs {row.get('active_envs', 0)}/{row.get('num_envs', 1)}")
     console.print(table)
     if run_id and rows[0].get("error"):
         console.print(rows[0]["error"], style="red", markup=False)
@@ -136,6 +140,9 @@ def execute(words, root):
             raise ValueError("Manual evaluation command currently accepts LoRA runs only")
         run = start(root, source / "config.yaml", adapter=latest(source))
         console.print(f"Evaluation started: {run.name}")
+    elif command == "benchmark":
+        from .benchmark import run_benchmark
+        run_benchmark(args[0] if args else "configs/spark-book-flight-parallel.yaml", root)
     elif command == "doctor":
         if not doctor():
             raise ValueError("Environment is not ready for Spark training. See setup instructions")
@@ -162,7 +169,7 @@ def shell(root):
     session = PromptSession(history=FileHistory(str(Path(root) / ".history")),
                             completer=WordCompleter(["/" + x for x in
                                 ["train", "resume", "stop", "status", "logs", "config", "eval",
-                                 "dashboard", "doctor", "env-check", "help", "exit"]]))
+                                 "dashboard", "benchmark", "doctor", "env-check", "help", "exit"]]))
     console.print(Panel("[bold cyan]BULFM[/bold cyan] · LFM3 Browser RL\n"
                         "GRPO • DGX Spark • /help\nTraining continues when this terminal closes.",
                         border_style="cyan"))

@@ -24,6 +24,10 @@ class Config(BaseModel):
     steps: int = Field(default=100, ge=1, le=100_000)
     group_size: int = Field(default=4, ge=2, le=32)
     groups_per_step: int = Field(default=1, ge=1, le=32)
+    num_envs: int = Field(default=1, ge=1, le=16)
+    generation_batch_size: int = Field(default=4, ge=1, le=16)
+    generation_use_cache: bool = False
+    env_timeout_seconds: float = Field(default=60, ge=5, le=600)
     episode_steps: int = Field(default=6, ge=1, le=100)
     context_tokens: int = Field(default=2048, ge=256)
     completion_tokens: int = Field(default=64, ge=1)

@@ -1,0 +1,13 @@
+model: LiquidAI/LFM3-1.7B
+task: miniwob.book-flight
+steps: 300
+group_size: 8
+num_envs: 8
+generation_batch_size: 8
+generation_use_cache: true
+episode_steps: 20
+context_tokens: 4096
+completion_tokens: 96
+save_every: 10
+eval_episodes: 8
+eval_every: 25

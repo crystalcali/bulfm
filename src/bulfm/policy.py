@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from .config import Config
-from .grpo import token_logps
+from .grpo import batch_token_logps
 
 
 def seed_all(seed):
@@ -75,23 +75,50 @@ def prompt_ids(tok, c, obs, history):
 
 
 @torch.no_grad()
-def generate(model, tok, ids, c, sample=True):
+def generate_batch(model, tok, prompts, c, sample=True, score=True):
+    if not prompts:
+        return []
     model.eval()
-    inputs = torch.tensor([ids], dtype=torch.long, device=next(model.parameters()).device)
+    device = next(model.parameters()).device
+    width = max(map(len, prompts))
+    inputs = torch.full((len(prompts), width), tok.pad_token_id, dtype=torch.long, device=device)
+    mask = torch.zeros_like(inputs)
+    for row, ids in enumerate(prompts):
+        if not ids:
+            raise ValueError("Empty generation prompt")
+        inputs[row, width-len(ids):] = torch.tensor(ids, device=device)
+        mask[row, width-len(ids):] = 1
     kwargs = {"do_sample": sample}
     if sample:
         kwargs.update(temperature=1.0, top_p=1.0, top_k=0)
-    # Uncached decoding works for hybrid operators without relying on vLLM/third-party kernels.
-    out = model.generate(input_ids=inputs, attention_mask=torch.ones_like(inputs),
+    out = model.generate(input_ids=inputs, attention_mask=mask,
                          max_new_tokens=c.completion_tokens, pad_token_id=tok.pad_token_id,
-                         eos_token_id=tok.eos_token_id, use_cache=False,
+                         eos_token_id=tok.eos_token_id, use_cache=c.generation_use_cache,
                          repetition_penalty=1.0, **kwargs)
-    completion = out[0, len(ids):].tolist()
-    if not completion:
-        raise RuntimeError("Model generated an empty completion")
-    old = token_logps(model, ids, completion).detach().cpu()
-    reference = None
-    if c.beta:
-        with model.disable_adapter():
-            reference = token_logps(model, ids, completion).detach().cpu()
-    return completion, old, reference
+    completions = []
+    eos = tok.eos_token_id
+    eos = set(eos if isinstance(eos, (list, tuple)) else [eos])
+    for row in range(len(prompts)):
+        completion = out[row, width:].tolist()
+        for index, token in enumerate(completion):
+            if token in eos:
+                completion = completion[:index + 1]
+                break
+        if not completion:
+            raise RuntimeError("Model generated an empty completion")
+        completions.append(completion)
+    # Greedy evaluation only needs actions/rewards, not old-policy or reference forwards.
+    old, reference = [None] * len(prompts), [None] * len(prompts)
+    if score:
+        old = [p.detach().cpu() for p in batch_token_logps(model, prompts, completions,
+                                                         tok.pad_token_id)]
+        if c.beta:
+            with model.disable_adapter():
+                reference = [p.detach().cpu() for p in batch_token_logps(
+                    model, prompts, completions, tok.pad_token_id)]
+    return list(zip(completions, old, reference))
+
+
+@torch.no_grad()
+def generate(model, tok, ids, c, sample=True):
+    return generate_batch(model, tok, [ids], c, sample=sample, score=sample)[0]

@@ -1,0 +1,15 @@
+# One LFM3/LoRA policy shared by four spawned CPU browsers.
+model: LiquidAI/LFM3-1.7B
+task: miniwob.book-flight
+steps: 300
+group_size: 4
+groups_per_step: 1
+num_envs: 4
+generation_batch_size: 4
+generation_use_cache: true
+episode_steps: 20
+context_tokens: 4096
+completion_tokens: 96
+save_every: 10
+eval_episodes: 8
+eval_every: 25
