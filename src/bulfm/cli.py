@@ -116,6 +116,8 @@ def env_check():
 def execute(words, root):
     command, *args = words
     command = command.lstrip("/")
+    if command in {"stop", "resume", "logs", "eval"} and len(args) != 1:
+        raise ValueError(f"Usage: /{command} RUN_ID. Use /status to list runs.")
     if command == "train":
         run = start(root, args[0] if args else "configs/spark.yaml")
         console.print(f"Started {run.name}\n/status {run.name}\n/logs {run.name}")

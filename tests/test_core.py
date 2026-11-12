@@ -228,6 +228,7 @@ def test_manager_start_and_stop(tmp_path, monkeypatch):
     assert psutil.Process().create_time() == snapshot(run)["process_started"]
     assert "Stop requested" in manager.stop(tmp_path / "runs", run.name)
     assert (run / "STOP").exists()
+    assert "already requested" in manager.stop(tmp_path / "runs", run.name)
     with pytest.raises(ValueError, match="already running"):
         manager.start(tmp_path / "runs", None, resume=run.name)
 

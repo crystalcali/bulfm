@@ -58,8 +58,11 @@ def stop(root, run_id):
     run = safe_run(Path(root), run_id)
     if not alive(read_json(run / "state.json")):
         raise ValueError("Run is not active")
+    if (run / "STOP").exists():
+        return f"Stop already requested. Check /status {run_id} and wait for stopped."
     (run / "STOP").touch()
-    return "Stop requested. The worker saves after the current optimizer step."
+    return (f"Stop requested. Check /status {run_id}; "
+            "the worker saves a checkpoint at the next safe boundary.")
 
 
 def list_runs(root):
