@@ -110,7 +110,7 @@ set -eu
 case "$1" in
   scripts/check_cuda.py) test -f .venv/.cuda-ready ;;
   -c) echo 'torch==2.14.1+cu130' ;;
-  -m) test "$2" = playwright ;;
+  -m) [[ "$2" == playwright || "$2" == bulfm.diagnostics ]] ;;
   *) exit 90 ;;
 esac
 ''')

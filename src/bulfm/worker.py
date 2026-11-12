@@ -11,6 +11,7 @@ from pathlib import Path
 import psutil
 
 from .config import Config
+from .diagnostics import error_message
 from .storage import append_event, atomic_json, read_json
 
 
@@ -193,7 +194,7 @@ def main():
         try:
             worker.execute(args.resume, args.evaluate_only)
         except Exception as exc:
-            worker.update(status="failed", error=f"{type(exc).__name__}: {exc}")
+            worker.update(status="failed", error=error_message(exc))
             traceback.print_exc()
             raise SystemExit(1) from exc
 

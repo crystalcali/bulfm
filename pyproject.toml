@@ -17,7 +17,8 @@ dependencies = [
 train = [
   "torch>=2.14.1,<2.16", "transformers==5.20.2", "peft==0.21.2",
   "accelerate==1.15.0", "safetensors==0.8.0",
-  "browsergym-miniwob==0.14.3", "socksio>=1,<2"
+  "browsergym-miniwob==0.14.3", "socksio>=1,<2",
+  "pyOpenSSL==26.4.0"
 ]
 dev = ["pytest>=8,<10", "ruff>=0.12,<1", "httpx>=0.27,<1"]
 

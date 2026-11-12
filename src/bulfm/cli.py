@@ -58,6 +58,14 @@ def doctor():
             found = False
         console.print(f"{'OK' if found else 'MISSING'}  {module}")
         okay &= found
+    try:
+        from .diagnostics import training_imports
+        training_imports()
+        console.print("OK  Transformers model classes and PEFT imports")
+    except Exception as exc:
+        from .diagnostics import error_message
+        console.print(error_message(exc), style="red", markup=False)
+        okay = False
     if importlib.util.find_spec("torch"):
         import torch
         console.print(f"PyTorch {torch.__version__}; CUDA build {torch.version.cuda}; "

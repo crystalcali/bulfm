@@ -51,6 +51,8 @@ if [[ "${1:-}" != '--browser-only' ]]; then
   trap 'rm -f "$TORCH_CONSTRAINT"' EXIT
   .venv/bin/python -c 'import torch; print("torch==" + torch.__version__)' > "$TORCH_CONSTRAINT"
   "$BULFM_UV" pip install --python .venv/bin/python -c "$TORCH_CONSTRAINT" -e '.[train]'
+  # find_spec alone misses errors in lazy Transformers imports and inherited system packages.
+  .venv/bin/python -m bulfm.diagnostics
 fi
 [[ -x .venv/bin/python ]] || { echo 'Create the environment first'; exit 1; }
 .venv/bin/python -m playwright install chromium

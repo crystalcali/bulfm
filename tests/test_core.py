@@ -230,3 +230,22 @@ def test_manager_start_and_stop(tmp_path, monkeypatch):
     assert (run / "STOP").exists()
     with pytest.raises(ValueError, match="already running"):
         manager.start(tmp_path / "runs", None, resume=run.name)
+
+
+def test_import_error_reports_original_dependency_failure():
+    from bulfm.diagnostics import error_message
+    try:
+        try:
+            raise AttributeError("module 'lib' has no attribute 'GEN_EMAIL'")
+        except AttributeError as root:
+            raise ModuleNotFoundError("Could not import module AutoModel") from root
+    except ModuleNotFoundError as exc:
+        message = error_message(exc)
+    assert "AutoModel" in message
+    assert "Root cause: AttributeError" in message
+    assert "GEN_EMAIL" in message
+
+
+def test_error_without_chain_stays_short():
+    from bulfm.diagnostics import error_message
+    assert error_message(ValueError("bad config")) == "ValueError: bad config"
