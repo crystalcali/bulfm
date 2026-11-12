@@ -1,0 +1,25 @@
+# LFM3-1.7B, real MiniWoB episodes, one GB10; no vLLM/Modal/API keys.
+model: LiquidAI/LFM3-1.7B
+model_revision: main
+trust_remote_code: true
+task: miniwob.click-test
+seed: 23
+steps: 100
+group_size: 4
+groups_per_step: 1
+episode_steps: 6
+context_tokens: 2048
+completion_tokens: 64
+learning_rate: 1.0e-5
+warmup_steps: 5
+beta: 0.04
+lora: true
+lora_rank: 16
+lora_alpha: 32
+gradient_checkpointing: true
+precision: bf16
+device: cuda
+save_every: 10
+eval_episodes: 20
+eval_every: 25
+baseline_eval: true
